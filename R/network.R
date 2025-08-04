@@ -1,184 +1,3 @@
-#' Relevance Network for (r)CCA and (s)PLS regression
-#' 
-#' Display relevance associations network for (regularized) canonical
-#' correlation analysis and (sparse) PLS regression. The function avoids the
-#' intensive computation of Pearson correlation matrices on large data set by
-#' calculating instead a pair-wise similarity matrix directly obtained from the
-#' latent components of our integrative approaches (CCA, PLS, block.pls
-#' methods). The similarity value between a pair of variables is obtained by
-#' calculating the sum of the correlations between the original variables and
-#' each of the latent components of the model. The values in the similarity
-#' matrix can be seen as a robust approximation of the Pearson correlation (see
-#' González et al. 2012 for a mathematical demonstration and exact formula).
-#' The advantage of relevance networks is their ability to simultaneously
-#' represent positive and negative correlations, which are missed by methods
-#' based on Euclidean distances or mutual information. Those networks are
-#' bipartite and thus only a link between two variables of different types can
-#' be represented. The network can be saved in a .glm format using the
-#' \code{igraph} package, the function \code{write.graph} and extracting the
-#' output \code{object$gR}, see details.
-#' 
-#' \code{network} allows to infer large-scale association networks between the
-#' \eqn{X} and \eqn{Y} datasets in \code{rcc} or \code{spls}. The output is a
-#' graph where each \eqn{X}- and \eqn{Y}-variable corresponds to a node and the
-#' edges included in the graph portray associations between them.
-#' 
-#' In \code{rcc}, to identify \eqn{X}-\eqn{Y} pairs showing relevant
-#' associations, \code{network} calculate a similarity measure between \eqn{X}
-#' and \eqn{Y} variables in a pair-wise manner: the scalar product value
-#' between every pairs of vectors in dimension \code{length(comp)} representing
-#' the variables \eqn{X} and \eqn{Y} on the axis defined by \eqn{Z_i} with
-#' \eqn{i} in \code{comp}, where \eqn{Z_i} is the equiangular vector between
-#' the \eqn{i}-th \eqn{X} and \eqn{Y} canonical variate.
-#' 
-#' In \code{spls}, if \code{object$mode} is \code{regression}, the similarity
-#' measure between \eqn{X} and \eqn{Y} variables is given by the scalar product
-#' value between every pairs of vectors in dimension \code{length(comp)}
-#' representing the variables \eqn{X} and \eqn{Y} on the axis defined by
-#' \eqn{U_i} with \eqn{i} in \code{comp}, where \eqn{U_i} is the \eqn{i}-th
-#' \eqn{X} variate. If \code{object$mode} is \code{canonical} then \eqn{X} and
-#' \eqn{Y} are represented on the axis defined by \eqn{U_i} and \eqn{V_i}
-#' respectively.
-#' 
-#' Variable pairs with a high similarity measure (in absolute value) are
-#' considered as relevant. By changing the cut-off, one can tune the relevance
-#' of the associations to include or exclude relationships in the network.
-#' 
-#' \code{interactive=TRUE} open two device, one for association network, one
-#' for scrollbar, and define an interactive process: by clicking either at each
-#' end (\eqn{-} or \eqn{+}) of the scrollbar or at middle portion of this.
-#' The position of the slider indicate which is the `cutoff' value associated
-#' to the display network.
-#' 
-#' The network can be saved in a .glm format using the \pkg{igraph} package,
-#' the function \code{write.graph} and extracting the output \code{obkect$gR}.
-#' 
-#' The interactive process is terminated by clicking the second button and
-#' selecting \code{Stop} from the menu, or from the \code{Stop} menu on the graphics
-#' window.
-#' 
-#' The \code{color.node} is a vector of length two, of any of the three kind of
-#' \code{R} colors, i.e., either a color name (an element of \code{colors()}),
-#' a hexadecimal string of the form \code{"#rrggbb"}, or an integer \code{i}
-#' meaning \code{palette()[i]}. \code{color.node[1]} and \code{color.node[2]}
-#' give the color for filled nodes of the \eqn{X}- and \eqn{Y}-variables
-#' respectively. Defaults to \code{c("white", "white")}.
-#' 
-#' \code{color.edge} give the color to edges with colors corresponding to the
-#' values in \code{mat}. Defaults to \code{color.GreenRed(100)} for negative
-#' (green) and positive (red) correlations. We also propose other palettes of
-#' colors, such as \code{color.jet} and \code{color.spectral}, see help on
-#' those functions, and examples below. Other palette of colors from the stats
-#' package can be used too.
-#' 
-#' \code{shape.node[1]} and \code{shape.node[2]} provide the shape of the nodes
-#' associate to \eqn{X}- and \eqn{Y}-variables respectively. Current acceptable
-#' values are \code{"circle"} and \code{"rectangle"}. Defaults to
-#' \code{c("circle", "rectangle")}.
-#' 
-#' \code{lty.edge[1]} and \code{lty.egde[2]} give the line type to edges with
-#' positive and negative weight respectively. Can be one of \code{"solid"},
-#' \code{"dashed"}, \code{"dotted"}, \code{"dotdash"}, \code{"longdash"} and
-#' \code{"twodash"}. Defaults to \code{c("solid", "solid")}.
-#' 
-#' \code{lwd.edge[1]} and \code{lwd.edge[2]} provide the line width to edges
-#' with positive and negative weight respectively. This attribute is of type
-#' double with a default of \code{c(1, 1)}.
-#' 
-#' @aliases network network.default network.rcc network.pls network.spls
-#' @param mat numeric matrix of values to be represented. Alternatively,
-#' an object from one of the following models: \code{mix_pls}, \code{plsda}, 
-#' \code{mixo_spls}, \code{splsda}, \code{rcc}, \code{sgcca}, \code{rgcca}, 
-#' \code{sgccda}.
-#' @param comp atomic or vector of positive integers. The components to
-#' adequately account for the data association. Defaults to \code{comp = 1}.
-#' @param cutoff numeric value between \code{0} and \code{1}. The tuning
-#' threshold for the relevant associations network (see Details).
-#' @param row.names,col.names character vector containing the names of \eqn{X}-
-#' and \eqn{Y}-variables.
-#' @param graph.scale Numeric between 0 and 1 which alters the scale of the entire
-#' plot. Increasing the value decreases the size of nodes and increases their distance
-#' from one another. Defaults to 0.5.
-#' @param size.node Numeric between 0 and 1 which determines the relative size of nodes.
-#' Defaults to 0.5.
-#' @param color.node vector of length two, the colors of the \eqn{X} and
-#' \eqn{Y} nodes (see Details).
-#' @param shape.node character vector of length two, the shape of the \eqn{X}
-#' and \eqn{Y} nodes (see Details).
-#' @param alpha.node Numeric between 0 and 1 which determines the opacity of nodes.
-#' Only used in block objects.
-#' @param color.edge vector of colors or character string specifying the colors
-#' function to using to color the edges, set to default to
-#' \code{color.GreenRed(100)} but other palettes can be chosen (see Details and
-#' Examples).
-#' @param lty.edge character vector of length two, the line type for the edges
-#' (see Details).
-#' @param lwd.edge vector of length two, the line width of the edges (see
-#' Details).
-#' @param show.edge.labels logical. If \code{TRUE}, plot association values as
-#' edge labels (defaults to \code{FALSE}).
-#' @param show.color.key Logical. If \code{TRUE} a color key should be plotted.
-#' @param symkey Logical indicating whether the color key should be made
-#' symmetric about 0. Defaults to \code{TRUE}.
-#' @param keysize numeric value indicating the size of the color key.
-#' @param keysize.label vector of length 1, indicating the size of the labels
-#' and title of the color key.
-#' @param breaks (optional) either a numeric vector indicating the splitting
-#' points for binning \code{mat} into colors, or a integer number of break
-#' points to be used, in which case the break points will be spaced equally
-#' between \code{min(mat)} and \code{max(mat)}.
-#' @param interactive logical. If \code{TRUE}, a scrollbar is created to change
-#' the cutoff value interactively (defaults to \code{FALSE}). See Details.
-#' @param save should the plot be saved ? If so, argument to be set either to
-#' \code{'jpeg'}, \code{'tiff'}, \code{'png'} or \code{'pdf'}.
-#' @param name.save character string giving the name of the saved file.
-#' @param cex.edge.label the font size for the edge labels.
-#' @param cex.node.name the font size for the node labels.
-#' @param blocks a vector indicating the block variables to display.
-#' @param block.var.names either a list of vector components for variable names
-#' in each block or FALSE for no names. If TRUE, the columns names of the
-#' blocks are used as names.
-#' @param layout.fun a function. It specifies how the vertices will be placed
-#' on the graph. See help(layout) in the igraph package. Defaults to
-#' layout.fruchterman.reingold.
-#' @param plot.graph logical. If \code{TRUE} (default), plotting window will be 
-#' filled with network. If \code{FALSE}, then no graph will be plotted, though 
-#' the return value of the function is the exact same.
-#' @return \code{network} return a list containing the following components:
-#' \item{M}{the correlation matrix used by \code{network}.} \item{gR}{a
-#' \code{graph} object to save the graph for cytoscape use (requires to load
-#' the \pkg{igraph} package).}
-#' @section Warning: If the number of variables is high, the generation of the
-#' network generation can take some time.
-#' @author Ignacio González, Kim-Anh Lê Cao, AL J Abadi
-#' @seealso \code{\link{plotVar}}, \code{\link{cim}},
-#' \code{\link{color.GreenRed}}, \code{\link{color.jet}},
-#' \code{\link{color.spectral}} and http: //www.mixOmics.org for more details.
-#' @references Mathematical definition: González I., Lê Cao K-A., Davis, M.J.
-#' and Déjean, S. (2012). Visualising associations between paired omics data
-#' sets. J. Data Mining 5:19.
-#' \url{http://www.biodatamining.org/content/5/1/19/abstract}
-#' 
-#' Examples and illustrations:
-#' 
-#' Rohart F, Gautier B, Singh A, Lê Cao K-A. mixOmics: an R package for 'omics
-#' feature selection and multiple data integration. PLoS Comput Biol 13(11):
-#' e1005752
-#' 
-#' Relevance networks:
-#' 
-#' Butte, A. J., Tamayo, P., Slonim, D., Golub, T. R. and Kohane, I. S. (2000).
-#' Discovering functional relationships between RNA expression and
-#' chemotherapeutic susceptibility using relevance networks. \emph{Proceedings
-#' of the National Academy of Sciences of the USA} \bold{97}, 12182-12186.
-#' 
-#' Moriyama, M., Hoshida, Y., Otsuka, M., Nishimura, S., Kato, N., Goto, T.,
-#' Taniguchi, H., Shiratori, Y., Seki, N. and Omata, M. (2003). Relevance
-#' Network between Chemosensitivity and Transcriptome in Human Hepatoma Cells.
-#' \emph{Molecular Cancer Therapeutics} \bold{2}, 199-205.
-#' @keywords multivariate graphs dplot hplot iplot
-#' @export
-#' @example ./examples/network-examples.R
 #' Modified Relevance Network for (r)CCA and (s)PLS regression
 #' 
 #' Display relevance associations network for (regularized) canonical
@@ -685,30 +504,56 @@ network <- function(mat,
     if(any(class.object %in% object.blocks))
     {
         # MODIFICATION 2: Calculate differential expression for coloring
-        if (any(class.object == "DA") && exists("mat$Y") && !is.null(mat$Y)) {
-            # Calculate mean expression differences between groups
-            Y_binary <- mat$Y
-            if (ncol(Y_binary) > 1) {
+        # Check if we have Y labels (for block.plsda objects)
+        Y_labels <- NULL
+        if (!is.null(mat$Y)) {
+            Y_labels <- mat$Y
+            if (is.factor(Y_labels)) {
+                Y_labels <- as.numeric(Y_labels) - 1  # Convert to 0/1
+            } else if (is.matrix(Y_labels) && ncol(Y_labels) > 1) {
                 # If Y is indicator matrix, convert to binary
-                Y_binary <- apply(mat$Y, 1, which.max) - 1
+                Y_labels <- apply(Y_labels, 1, which.max) - 1
             }
+        }
+        
+        # Calculate differential expression for each block if Y labels exist
+        diff_expr_list <- NULL
+        alpha_list <- NULL
+        if (!is.null(Y_labels)) {
+            # Debug message
+            message("Calculating differential expression based on Y labels...")
+            message("Y=0: ", sum(Y_labels == 0), " samples, Y=1: ", sum(Y_labels == 1), " samples")
             
-            # Calculate differential expression for each block
             diff_expr_list <- list()
+            alpha_list <- list()
+            
             for (block_name in blocks) {
                 block_data <- mat$X[[block_name]]
                 
                 # Mean expression for each group
-                mean_Y0 <- colMeans(block_data[Y_binary == 0, , drop = FALSE])
-                mean_Y1 <- colMeans(block_data[Y_binary == 1, , drop = FALSE])
+                mean_Y0 <- colMeans(block_data[Y_labels == 0, , drop = FALSE])
+                mean_Y1 <- colMeans(block_data[Y_labels == 1, , drop = FALSE])
                 
-                # Calculate log fold change or difference
+                # Calculate difference
                 diff_expr <- mean_Y1 - mean_Y0
-                # Normalize to [-1, 1] range
+                
+                # Map to alpha values
+                # More expressed in Y=1 -> higher alpha (less transparent)
+                # More expressed in Y=0 -> lower alpha (more transparent)
+                # Normalize differences to get relative expression
                 if (max(abs(diff_expr)) > 0) {
-                    diff_expr <- diff_expr / max(abs(diff_expr))
+                    diff_expr_norm <- diff_expr / max(abs(diff_expr))
+                } else {
+                    diff_expr_norm <- rep(0, length(diff_expr))
                 }
+                
+                # Map to alpha range [0.3, 1.0]
+                # diff_expr_norm in [-1, 1] -> alpha in [0.3, 1.0]
+                alpha_values <- 0.65 + 0.35 * diff_expr_norm
+                alpha_values <- pmax(0.3, pmin(1.0, alpha_values))
+                
                 diff_expr_list[[block_name]] <- diff_expr
+                alpha_list[[block_name]] <- alpha_values
             }
         }
         
@@ -722,51 +567,57 @@ network <- function(mat,
             color.node = base_colors[1:length(blocks)]
             names(color.node) = blocks
             
-            # MODIFICATION 2: Adjust saturation based on differential expression
-            if (exists("diff_expr_list") && !is.null(diff_expr_list)) {
-                # Store node-specific colors
+            # MODIFICATION 2: Use alpha for differential expression
+            if (!is.null(alpha_list)) {
+                # Store node-specific colors with alpha
                 node_colors <- list()
                 for (i in 1:length(blocks)) {
                     block_name <- blocks[i]
                     base_col <- color.node[i]
-                    diff_expr <- diff_expr_list[[block_name]]
+                    alpha_vals <- alpha_list[[block_name]]
                     
-                    # Convert base color to HSV
-                    col_rgb <- col2rgb(base_col)
-                    col_hsv <- rgb2hsv(col_rgb)
-                    
-                    # Adjust saturation based on differential expression
-                    # Positive diff_expr (higher in Y=1) -> higher saturation
-                    # Negative diff_expr (higher in Y=0) -> lower saturation
-                    node_cols <- sapply(diff_expr, function(de) {
-                        # Map differential expression to saturation
-                        # de in [-1, 1] -> saturation in [0.2, 1]
-                        new_sat <- 0.6 + 0.4 * de  # Center at 0.6, range ±0.4
-                        new_sat <- max(0.2, min(1, new_sat))
-                        
-                        new_hsv <- col_hsv
-                        new_hsv[2] <- new_sat
-                        
-                        # Convert back to RGB
-                        new_col <- hsv(new_hsv[1], new_hsv[2], new_hsv[3])
-                        adjustcolor(new_col, alpha.f = alpha.node)
+                    # Apply different alpha values to each node
+                    node_cols <- sapply(alpha_vals, function(alpha_val) {
+                        adjustcolor(base_col, alpha.f = alpha_val)
                     })
                     
+                    names(node_cols) <- names(alpha_vals)
                     node_colors[[block_name]] <- node_cols
                 }
             } else {
-                # If no differential expression info, use uniform colors
+                # If no differential expression info, use uniform colors with default alpha
                 color.node = adjustcolor(color.node, alpha.f = alpha.node)
             }
         } else {
             if (!is.vector(color.node) || length(color.node) != length(blocks))
                 stop("'color.node' must be a vector of length ", length(blocks), ".", call. = FALSE)
-            color.node = adjustcolor(color.node, alpha.f = alpha.node)
+            
+            # Apply differential alpha if available
+            if (!is.null(alpha_list)) {
+                # Store node-specific colors with alpha
+                node_colors <- list()
+                for (i in 1:length(blocks)) {
+                    block_name <- blocks[i]
+                    base_col <- color.node[i]
+                    alpha_vals <- alpha_list[[block_name]]
+                    
+                    # Apply different alpha values to each node
+                    node_cols <- sapply(alpha_vals, function(alpha_val) {
+                        adjustcolor(base_col, alpha.f = alpha_val)
+                    })
+                    
+                    names(node_cols) <- names(alpha_vals)
+                    node_colors[[block_name]] <- node_cols
+                }
+            } else {
+                color.node = adjustcolor(color.node, alpha.f = alpha.node)
+            }
         }
     } else {
-        if(is.null(color.node))
+        if(is.null(color.node)) {
             color.node = brewer.pal(n = 12, name = 'Paired')[c(1,3)]
             color.node = adjustcolor(color.node, alpha.f = alpha.node)
+        }
         
         if (!is.list(color.node))
         {
@@ -778,9 +629,15 @@ network <- function(mat,
         }
     }
     
-    if (any(!sapply(color.node, function(x){tryCatch(is.matrix(col2rgb(x)), error = function(e) FALSE) })))
-        stop("'color.node' must be a character vector of recognized colors.",
-             call. = FALSE)
+    # Skip the color validation if node_colors was created
+    if (!exists("node_colors") || is.null(node_colors)) {
+        if (any(!sapply(color.node, function(x){
+            if (is.list(x)) return(FALSE)  # Allow lists for node_colors
+            tryCatch(is.matrix(col2rgb(x)), error = function(e) FALSE) 
+        }))
+            stop("'color.node' must be a character vector of recognized colors.",
+                 call. = FALSE)
+    }
     
     #-- shape.node
     # MODIFICATION 1: Ensure different shapes for different omics
@@ -1037,20 +894,26 @@ network <- function(mat,
             if (exists("node_colors") && !is.null(node_colors) && i %in% names(node_colors)) {
                 # Get node indices for this block
                 node_idx <- which(V(gR)$group == i)
-                # Map node names to colors
-                node_names <- V(gR)$name[node_idx]
-                # Remove block suffix to match with original feature names
-                feature_names <- sub(paste0("_", i, "$"), "", node_names)
+                # Get the node colors for this block
+                block_node_colors <- node_colors[[i]]
                 
-                # Apply colors based on feature names
+                # Apply colors based on matching names
                 for (k in seq_along(node_idx)) {
-                    feat_name <- feature_names[k]
-                    # Find the color for this feature
-                    feat_idx <- which(names(node_colors[[i]]) == feat_name)
-                    if (length(feat_idx) > 0) {
-                        V(gR)$color[node_idx[k]] <- node_colors[[i]][feat_idx]
+                    node_name <- V(gR)$name[node_idx[k]]
+                    # Remove block suffix to match with original feature names
+                    feat_name <- sub(paste0("_", i, "$"), "", node_name)
+                    
+                    # Find matching color
+                    if (feat_name %in% names(block_node_colors)) {
+                        V(gR)$color[node_idx[k]] <- block_node_colors[feat_name]
                     } else {
-                        V(gR)$color[node_idx[k]] <- color.node[j]  # Default color
+                        # Fallback: try exact match with node name
+                        if (node_name %in% names(block_node_colors)) {
+                            V(gR)$color[node_idx[k]] <- block_node_colors[node_name]
+                        } else {
+                            # Default color if no match found
+                            V(gR)$color[node_idx[k]] <- color.node[j]
+                        }
                     }
                 }
             } else {
