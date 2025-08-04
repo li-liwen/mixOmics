@@ -179,6 +179,16 @@
 #' @keywords multivariate graphs dplot hplot iplot
 #' @export
 #' @example ./examples/network-examples.R
+#' Modified Relevance Network for (r)CCA and (s)PLS regression
+#' 
+#' Display relevance associations network for (regularized) canonical
+#' correlation analysis and (sparse) PLS regression with enhanced visualization.
+#' 
+#' Modifications:
+#' 1. Different shapes for nodes from different omics
+#' 2. Color intensity based on differential expression between groups
+#' 3. Better color distinction for positive/negative correlations near cutoff
+
 network <- function(mat,
                     comp = NULL,
                     blocks = c(1, 2),
@@ -242,10 +252,6 @@ network <- function(mat,
         if (length(not.arg) > 1) msg = "unused arguments "
         stop(msg, output, call. = FALSE)
     }
-    
-    #    #-- check blocks
-    #    if(length(blocks) != 2)
-    #    stop("We can only display 2 blocks",call.=FALSE)
     
     #-- save
     if (!is.null(save))
@@ -421,6 +427,9 @@ network <- function(mat,
         }
         
     } else if(any(class.object %in% object.blocks)) {
+        
+        # Store original block names before modifying column names
+        original_block_names <- names(mat$X)
         
         mat$X <- mapply(mat$X, names(mat$X), FUN =  function(x, y)
         {
@@ -675,19 +684,84 @@ network <- function(mat,
     #-- color.node
     if(any(class.object %in% object.blocks))
     {
+        # MODIFICATION 2: Calculate differential expression for coloring
+        if (any(class.object == "DA") && exists("mat$Y") && !is.null(mat$Y)) {
+            # Calculate mean expression differences between groups
+            Y_binary <- mat$Y
+            if (ncol(Y_binary) > 1) {
+                # If Y is indicator matrix, convert to binary
+                Y_binary <- apply(mat$Y, 1, which.max) - 1
+            }
+            
+            # Calculate differential expression for each block
+            diff_expr_list <- list()
+            for (block_name in blocks) {
+                block_data <- mat$X[[block_name]]
+                
+                # Mean expression for each group
+                mean_Y0 <- colMeans(block_data[Y_binary == 0, , drop = FALSE])
+                mean_Y1 <- colMeans(block_data[Y_binary == 1, , drop = FALSE])
+                
+                # Calculate log fold change or difference
+                diff_expr <- mean_Y1 - mean_Y0
+                # Normalize to [-1, 1] range
+                if (max(abs(diff_expr)) > 0) {
+                    diff_expr <- diff_expr / max(abs(diff_expr))
+                }
+                diff_expr_list[[block_name]] <- diff_expr
+            }
+        }
+        
         if (is.null(color.node))
         {
-            ## see circosPlot
-            color.blocks = brewer.pal(n = 12, name = 'Paired') #why 12?? ANS: bc max allowed n is 12 for this function
-            if (length(blocks) > 6) {
-                color.blocks <- colorRampPalette(color.blocks)(2*length(object$X))
+            ## Base colors for different blocks
+            base_colors = brewer.pal(n = 12, name = 'Set3')
+            if (length(blocks) > 12) {
+                base_colors <- colorRampPalette(base_colors)(length(blocks))
             }
-            color.node = color.blocks[seq(from = 1, to = 2*length(blocks), by = 2)]
-            color.node = adjustcolor(color.node, alpha.f = alpha.node)
+            color.node = base_colors[1:length(blocks)]
             names(color.node) = blocks
+            
+            # MODIFICATION 2: Adjust saturation based on differential expression
+            if (exists("diff_expr_list") && !is.null(diff_expr_list)) {
+                # Store node-specific colors
+                node_colors <- list()
+                for (i in 1:length(blocks)) {
+                    block_name <- blocks[i]
+                    base_col <- color.node[i]
+                    diff_expr <- diff_expr_list[[block_name]]
+                    
+                    # Convert base color to HSV
+                    col_rgb <- col2rgb(base_col)
+                    col_hsv <- rgb2hsv(col_rgb)
+                    
+                    # Adjust saturation based on differential expression
+                    # Positive diff_expr (higher in Y=1) -> higher saturation
+                    # Negative diff_expr (higher in Y=0) -> lower saturation
+                    node_cols <- sapply(diff_expr, function(de) {
+                        # Map differential expression to saturation
+                        # de in [-1, 1] -> saturation in [0.2, 1]
+                        new_sat <- 0.6 + 0.4 * de  # Center at 0.6, range ±0.4
+                        new_sat <- max(0.2, min(1, new_sat))
+                        
+                        new_hsv <- col_hsv
+                        new_hsv[2] <- new_sat
+                        
+                        # Convert back to RGB
+                        new_col <- hsv(new_hsv[1], new_hsv[2], new_hsv[3])
+                        adjustcolor(new_col, alpha.f = alpha.node)
+                    })
+                    
+                    node_colors[[block_name]] <- node_cols
+                }
+            } else {
+                # If no differential expression info, use uniform colors
+                color.node = adjustcolor(color.node, alpha.f = alpha.node)
+            }
         } else {
             if (!is.vector(color.node) || length(color.node) != length(blocks))
                 stop("'color.node' must be a vector of length ", length(blocks), ".", call. = FALSE)
+            color.node = adjustcolor(color.node, alpha.f = alpha.node)
         }
     } else {
         if(is.null(color.node))
@@ -709,10 +783,16 @@ network <- function(mat,
              call. = FALSE)
     
     #-- shape.node
+    # MODIFICATION 1: Ensure different shapes for different omics
     if(any(class.object%in% object.blocks))
     {
         if (is.null(shape.node))
-            shape.node = "circle"
+        {
+            # Assign different shapes to each block
+            available_shapes <- c("circle", "rectangle")
+            shape.node <- rep(available_shapes, length.out = length(blocks))
+            names(shape.node) = blocks
+        }
         
         if (is.vector(shape.node))
         {
@@ -767,9 +847,18 @@ network <- function(mat,
       }
     }
     
-        
-    
+    # MODIFICATION 3: Better edge color distinction near cutoff
     #-- color.edge
+    if (is.null(color.edge) || (length(color.edge) == 1 && is.function(color.edge))) {
+        # Create custom color palette with clear distinction at 0
+        n_colors <- 100
+        # Create colors for negative correlations (green gradient)
+        neg_colors <- colorRampPalette(c("#00FF00", "#90EE90", "#E0FFE0"))(n_colors/2)
+        # Create colors for positive correlations (red gradient)  
+        pos_colors <- colorRampPalette(c("#FFE0E0", "#FF9090", "#FF0000"))(n_colors/2)
+        color.edge <- c(neg_colors, pos_colors)
+    }
+    
     if (length(color.edge) < 2 && (!is(color.edge, "function")))
         stop("'color.edge' must be a vector of length larger than or equal to 2.", call. = FALSE)
     
@@ -944,7 +1033,30 @@ network <- function(mat,
         j = 1
         for (i in blocks)
         {
-            V(gR)$color[V(gR)$group == i] = color.node[j]
+            # MODIFICATION 2: Apply node-specific colors if available
+            if (exists("node_colors") && !is.null(node_colors) && i %in% names(node_colors)) {
+                # Get node indices for this block
+                node_idx <- which(V(gR)$group == i)
+                # Map node names to colors
+                node_names <- V(gR)$name[node_idx]
+                # Remove block suffix to match with original feature names
+                feature_names <- sub(paste0("_", i, "$"), "", node_names)
+                
+                # Apply colors based on feature names
+                for (k in seq_along(node_idx)) {
+                    feat_name <- feature_names[k]
+                    # Find the color for this feature
+                    feat_idx <- which(names(node_colors[[i]]) == feat_name)
+                    if (length(feat_idx) > 0) {
+                        V(gR)$color[node_idx[k]] <- node_colors[[i]][feat_idx]
+                    } else {
+                        V(gR)$color[node_idx[k]] <- color.node[j]  # Default color
+                    }
+                }
+            } else {
+                V(gR)$color[V(gR)$group == i] = color.node[j]
+            }
+            
             V(gR)$shape[V(gR)$group == i] = shape.node[j]
             if (shape.node[j] == "none") {
               V(gR)$label.color[V(gR)$group == i] = paste0(substr(color.node[j], 1, 7), "FF")
