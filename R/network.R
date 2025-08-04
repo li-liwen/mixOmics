@@ -619,11 +619,9 @@ network <- function(mat,
             color.node = adjustcolor(color.node, alpha.f = alpha.node)
         }
         
-        if (!is.list(color.node))
-        {
+        if (!is.list(color.node)) {
             if (!is.vector(color.node) || length(color.node) != 2)
                 stop("'color.node' must be a vector of length 2.", call. = FALSE)
-            
         } else {
             stop("'color.node' must be a vector of length 2.", call. = FALSE)
         }
@@ -634,9 +632,10 @@ network <- function(mat,
         if (any(!sapply(color.node, function(x){
             if (is.list(x)) return(FALSE)  # Allow lists for node_colors
             tryCatch(is.matrix(col2rgb(x)), error = function(e) FALSE) 
-        }))
+        }))) {
             stop("'color.node' must be a character vector of recognized colors.",
                  call. = FALSE)
+        }
     }
     
     #-- shape.node
