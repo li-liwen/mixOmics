@@ -986,10 +986,12 @@ network <- function(mat,
     if (!is.null(color.node.individual)) {
         # Get the actual node names (not labels)
         node_names <- V(gR)$name
+
         
         # Apply individual colors
         for (i in seq_along(node_names)) {
             if (node_names[i] %in% names(color.node.individual)) {
+
                 V(gR)$color[i] <- color.node.individual[[node_names[i]]]
                 
                 # Update label color if shape is "none"
