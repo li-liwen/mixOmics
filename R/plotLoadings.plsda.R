@@ -157,7 +157,11 @@ plotLoadings.mixo_plsda <-
                         par(mar = c(4, max(7, max(sapply(colnames.X, nchar),na.rm = TRUE)/3), 4, 2))
                     }
                     
-                    xlim <- xlim[1,]
+                    # Check and fix xlim
+                    
+                    xlim <- check$xlim[1,]
+                    check = check.input.plotLoadings(xlim = xlim)
+                    xlim <- check$xlim
 
                     .plotLoadings_barplot(height = df$importance, col = df$color, names.arg = colnames.X, 
                     cex.name = size.name, border = border, xlim = xlim[i, ], 
