@@ -157,14 +157,10 @@ plotLoadings.mixo_plsda <-
                         par(mar = c(4, max(7, max(sapply(colnames.X, nchar),na.rm = TRUE)/3), 4, 2))
                     }
                     
-                    # Check and fix xlim
-                    
-                    xlim <- check$xlim[1,]
-                    check = check.input.plotLoadings(xlim = xlim)
-                    xlim <- check$xlim
+                    # xlim <- xlim[1,]
 
                     .plotLoadings_barplot(height = df$importance, col = df$color, names.arg = colnames.X, 
-                    cex.name = size.name, border = border, xlim = xlim[i, ], 
+                    cex.name = size.name, border = border, xlim = xlim[1, ], 
                     xlab = X.label, ylab = Y.label, cex.lab = size.labs, cex.axis = size.axis)
                     
                     if ( length(block) == 1 & is.null(title) )
@@ -227,7 +223,7 @@ plotLoadings.mixo_plsda <-
                     
                     # Control x axis limits if specified
                     if (!is.null(xlim)) {
-                        p <- p + scale_y_continuous(limits = xlim[i,], expand = c(0,0))
+                        p <- p + scale_y_continuous(limits = xlim[1,], expand = c(0,0))
                     }
                     
                     # Flip coordinates for horizontal bar plot
