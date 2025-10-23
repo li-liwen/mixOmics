@@ -69,7 +69,13 @@ plotLoadings.mixo_pls <-
     col = check$col
     size.name = check$size.name
     block = check$block
-    xlim = check$xlim
+    # Respect user-supplied xlim; otherwise use the checked default
+    if (is.null(xlim)) {
+      xlim <- check$xlim
+    } else {
+      # make xlim a 2-col matrix replicated per block so xlim[i, ] works
+      xlim <- matrix(rep(xlim, length(block)), ncol = 2, byrow = TRUE)
+    }
     
     # -- layout
     res = layout.plotLoadings(layout = layout, plot = TRUE, legend = FALSE, block = block)
@@ -140,7 +146,7 @@ plotLoadings.mixo_pls <-
           labs(title = plot.title, y = X.label, x = Y.label)
         
         # optionally control x axis
-        if (!is.null(xlim)) {p <- p + scale_y_continuous(limits = xlim[1,], expand = c(0,0))}
+        if (!is.null(xlim)) { p <- p + scale_y_continuous(limits = xlim[i, ], expand = c(0, 0)) }
         
         # flip and store it
         p <- p + coord_flip()
