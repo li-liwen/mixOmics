@@ -64,6 +64,12 @@
 #' give the color for filled nodes of the \eqn{X}- and \eqn{Y}-variables
 #' respectively. Defaults to \code{c("white", "white")}.
 #' 
+#' Individual node colors can be customized using the \code{color.node.individual}
+#' argument, which accepts a named vector where names correspond to node names
+#' and values are valid R colors. Note: for block objects (e.g., \code{sgcca},
+#' \code{block.splsda}), node names include the block suffix (e.g.,
+#' \code{"variablename_blockname"}).
+#' 
 #' \code{color.edge} give the color to edges with colors corresponding to the
 #' values in \code{mat}. Defaults to \code{color.GreenRed(100)} for negative
 #' (green) and positive (red) correlations. We also propose other palettes of
@@ -103,6 +109,10 @@
 #' Defaults to 0.5.
 #' @param color.node vector of length two, the colors of the \eqn{X} and
 #' \eqn{Y} nodes (see Details).
+#' @param color.node.individual a named character vector to specify custom colors
+#' for individual nodes. Names must match the node names in the graph
+#' (see Details). If a node name is not found in the vector, the default
+#' \code{color.node} colors are used. Defaults to \code{NULL}.
 #' @param shape.node character vector of length two, the shape of the \eqn{X}
 #' and \eqn{Y} nodes (see Details).
 #' @param alpha.node Numeric between 0 and 1 which determines the opacity of nodes.
@@ -675,18 +685,23 @@ network <- function(mat,
 
     #-- color.node.individual
     if (!is.null(color.node.individual)) {
-        if (!is.vector(color.node.individual) || is.null(names(color.node.individual))) {
-            stop("'color.node.individual' must be a named vector with node names as names and colors as values.", 
-                 call. = FALSE)
-        }
-        
-        # Validate that all values are valid colors
-        invalid_colors <- !sapply(color.node.individual, function(x) {
-            tryCatch(is.matrix(col2rgb(x)), error = function(e) FALSE)
-        })
-        
-        if (any(invalid_colors)) {
-            stop("'color.node.individual' contains invalid color values.", call. = FALSE)
+        # Treat empty vector as NULL
+        if (length(color.node.individual) == 0) {
+            color.node.individual = NULL
+        } else {
+            if (!is.vector(color.node.individual) || is.null(names(color.node.individual))) {
+                stop("'color.node.individual' must be a named vector with node names as names and colors as values.", 
+                     call. = FALSE)
+            }
+            
+            # Validate that all values are valid colors
+            invalid_colors <- !sapply(color.node.individual, function(x) {
+                tryCatch(is.matrix(col2rgb(x)), error = function(e) FALSE)
+            })
+            
+            if (any(invalid_colors)) {
+                stop("'color.node.individual' contains invalid color values.", call. = FALSE)
+            }
         }
     }
     
@@ -984,7 +999,9 @@ network <- function(mat,
         }
     }
 
-    # Override with individual colors if provided
+    #-- color.node.individual: apply custom colors to matching nodes
+    # For block objects, node names are formatted as "varname_blockname"
+    # Users must provide names in this format when using color.node.individual
     if (!is.null(color.node.individual)) {
         # Get the actual node names (not labels)
         node_names <- V(gR)$name

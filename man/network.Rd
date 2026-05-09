@@ -19,6 +19,7 @@ network(
   graph.scale = 0.5,
   size.node = 0.5,
   color.node = NULL,
+  color.node.individual = NULL,
   shape.node = NULL,
   alpha.node = 0.85,
   cex.node.name = NULL,
@@ -69,6 +70,11 @@ Defaults to 0.5.}
 
 \item{color.node}{vector of length two, the colors of the \eqn{X} and
 \eqn{Y} nodes (see Details).}
+
+\item{color.node.individual}{a named character vector to specify custom colors
+for individual nodes. Names must match the node names in the graph
+(see Details). If a node name is not found in the vector, the default
+\code{color.node} colors are used. Defaults to \code{NULL}.}
 
 \item{shape.node}{character vector of length two, the shape of the \eqn{X}
 and \eqn{Y} nodes (see Details).}
@@ -197,6 +203,12 @@ meaning \code{palette()[i]}. \code{color.node[1]} and \code{color.node[2]}
 give the color for filled nodes of the \eqn{X}- and \eqn{Y}-variables
 respectively. Defaults to \code{c("white", "white")}.
 
+Individual node colors can be customized using the \code{color.node.individual}
+argument, which accepts a named vector where names correspond to node names
+and values are valid R colors. Note: for block objects (e.g., \code{sgcca},
+\code{block.splsda}), node names include the block suffix (e.g.,
+\code{"variablename_blockname"}).
+
 \code{color.edge} give the color to edges with colors corresponding to the
 values in \code{mat}. Defaults to \code{color.GreenRed(100)} for negative
 (green) and positive (red) correlations. We also propose other palettes of
@@ -224,6 +236,35 @@ network generation can take some time.
 }
 
 \examples{
+## Customizing individual node colors with color.node.individual
+# Useful for highlighting specific nodes (e.g., based on log fold change)
+data(nutrimouse)
+X <- nutrimouse$lipid
+Y <- nutrimouse$gene
+nutri.res <- rcc(X, Y, ncomp = 3, lambda1 = 0.064, lambda2 = 0.008)
+
+# Calculate log fold change for each variable (binary genotype: WT vs KO)
+logfc.lipid <- rowMeans(nutrimouse$lipid[nutrimouse$genotype == "KO", ]) - 
+               rowMeans(nutrimouse$lipid[nutrimouse$genotype == "WT", ])
+logfc.gene <- rowMeans(nutrimouse$gene[nutrimouse$genotype == "KO", ]) - 
+              rowMeans(nutrimouse$gene[nutrimouse$genotype == "WT", ])
+
+# Create color gradient: blue (negative) to red (positive)
+color.range <- range(c(logfc.lipid, logfc.gene))
+cols.lipid <- colorRampPalette(c("blue", "white", "red"))(100)[
+    findInterval(logfc.lipid, seq(color.range[1], color.range[2], length.out = 100))]
+cols.gene <- colorRampPalette(c("blue", "white", "red"))(100)[
+    findInterval(logfc.gene, seq(color.range[1], color.range[2], length.out = 100))]
+
+# Create named color vector for individual nodes
+color.node.individual <- c(setNames(cols.lipid, rownames(nutrimouse$lipid)),
+                           setNames(cols.gene, rownames(nutrimouse$gene)))
+
+# Plot network with custom individual colors
+jpeg('example-custom-colors-network.jpeg')
+network(nutri.res, comp = 1:3, cutoff = 0.6, color.node.individual = color.node.individual)
+dev.off()
+
 ## network representation for objects of class 'rcc'
 data(nutrimouse)
 X <- nutrimouse$lipid

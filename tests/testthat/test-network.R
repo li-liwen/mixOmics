@@ -113,3 +113,102 @@ test_that("network plot.graph parameter does not affect numerical output", {
   
   expect_equal(network.obj.F$M, network.obj.T$M)
 })
+
+test_that("color.node.individual accepts valid named color vector", {
+  data(nutrimouse)
+  X <- nutrimouse$lipid
+  Y <- nutrimouse$gene
+  nutri.res <- rcc(X, Y, ncomp = 3, lambda1 = 0.064, lambda2 = 0.008)
+  
+  tmp.file <- tempfile("network", fileext = ".jpeg")
+  
+  # Test with named color vector
+  custom_colors <- c("gene1" = "red", "gene2" = "blue")
+  net <- network(nutri.res, comp = 1:3, cutoff = 0.6, 
+                 color.node.individual = custom_colors,
+                 save = "jpeg", name.save = tmp.file, plot.graph = FALSE)
+  
+  expect_equal(names(net), c("gR", "M", "cutoff"))
+  unlink(tmp.file)
+})
+
+test_that("color.node.individual errors when not a named vector", {
+  data(nutrimouse)
+  X <- nutrimouse$lipid
+  Y <- nutrimouse$gene
+  nutri.res <- rcc(X, Y, ncomp = 3, lambda1 = 0.064, lambda2 = 0.008)
+  
+  expect_error(network(nutri.res, comp = 1:3, cutoff = 0.6,
+                       color.node.individual = c("red", "blue")),
+               "'color.node.individual' must be a named vector")
+})
+
+test_that("color.node.individual errors on invalid colors", {
+  data(nutrimouse)
+  X <- nutrimouse$lipid
+  Y <- nutrimouse$gene
+  nutri.res <- rcc(X, Y, ncomp = 3, lambda1 = 0.064, lambda2 = 0.008)
+  
+  expect_error(network(nutri.res, comp = 1:3, cutoff = 0.6,
+                       color.node.individual = c(gene1 = "notacolor")),
+               "'color.node.individual' contains invalid color values")
+})
+
+test_that("color.node.individual empty vector treated as NULL", {
+  data(nutrimouse)
+  X <- nutrimouse$lipid
+  Y <- nutrimouse$gene
+  nutri.res <- rcc(X, Y, ncomp = 3, lambda1 = 0.064, lambda2 = 0.008)
+  
+  tmp.file <- tempfile("network", fileext = ".jpeg")
+  
+  # Should not error
+  net <- network(nutri.res, comp = 1:3, cutoff = 0.6,
+                 color.node.individual = c(),
+                 save = "jpeg", name.save = tmp.file, plot.graph = FALSE)
+  
+  expect_equal(names(net), c("gR", "M", "cutoff"))
+  unlink(tmp.file)
+})
+
+test_that("color.node.individual applies colors to matching nodes", {
+  data(nutrimouse)
+  X <- nutrimouse$lipid
+  Y <- nutrimouse$gene
+  nutri.res <- rcc(X, Y, ncomp = 3, lambda1 = 0.064, lambda2 = 0.008)
+  
+  # Get first two gene names
+  gene_names <- rownames(nutrimouse$gene)[1:2]
+  custom_colors <- setNames(c("hotpink", "cyan"), gene_names)
+  
+  tmp.file <- tempfile("network", fileext = ".jpeg")
+  net <- network(nutri.res, comp = 1:3, cutoff = 0.6,
+                 color.node.individual = custom_colors,
+                 save = "jpeg", name.save = tmp.file, plot.graph = FALSE)
+  
+  # Verify colors were applied
+  node_indices <- which(V(net$gR)$name %in% gene_names)
+  applied_colors <- V(net$gR)$color[node_indices]
+  expect_equal(sort(applied_colors), sort(c("hotpink", "cyan")))
+  
+  unlink(tmp.file)
+})
+
+test_that("color.node.individual non-matching names are silently ignored", {
+  data(nutrimouse)
+  X <- nutrimouse$lipid
+  Y <- nutrimouse$gene
+  nutri.res <- rcc(X, Y, ncomp = 3, lambda1 = 0.064, lambda2 = 0.008)
+  
+  # Use a name that doesn't exist
+  custom_colors <- c("nonexistent_gene_xyz" = "red")
+  
+  tmp.file <- tempfile("network", fileext = ".jpeg")
+  # Should not error and should return normal result
+  net <- network(nutri.res, comp = 1:3, cutoff = 0.6,
+                 color.node.individual = custom_colors,
+                 save = "jpeg", name.save = tmp.file, plot.graph = FALSE)
+  
+  expect_equal(names(net), c("gR", "M", "cutoff"))
+  unlink(tmp.file)
+})
