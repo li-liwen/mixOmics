@@ -160,7 +160,7 @@
 #' the \pkg{igraph} package).}
 #' @section Warning: If the number of variables is high, the generation of the
 #' network generation can take some time.
-#' @author Ignacio González, Kim-Anh Lê Cao, AL J Abadi
+#' @author Ignacio González, Kim-Anh Lê Cao, AL J Abadi, Liwen Li
 #' @seealso \code{\link{plotVar}}, \code{\link{cim}},
 #' \code{\link{color.GreenRed}}, \code{\link{color.jet}},
 #' \code{\link{color.spectral}} and http: //www.mixOmics.org for more details.
