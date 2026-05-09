@@ -189,6 +189,7 @@ network <- function(mat,
                     graph.scale = 0.5,
                     size.node = 0.5,
                     color.node = NULL,
+                    color.node.individual = NULL,
                     shape.node = NULL,
                     alpha.node = 0.85,
                     cex.node.name = NULL,
@@ -671,6 +672,23 @@ network <- function(mat,
     if (!is.finite(graph.scale) || graph.scale < 0 || graph.scale > 1) {
       stop("'graph.scale' must be a numerical value between 0 - 1.", call. = FALSE)
     }
+
+    #-- color.node.individual
+    if (!is.null(color.node.individual)) {
+        if (!is.vector(color.node.individual) || is.null(names(color.node.individual))) {
+            stop("'color.node.individual' must be a named vector with node names as names and colors as values.", 
+                 call. = FALSE)
+        }
+        
+        # Validate that all values are valid colors
+        invalid_colors <- !sapply(color.node.individual, function(x) {
+            tryCatch(is.matrix(col2rgb(x)), error = function(e) FALSE)
+        })
+        
+        if (any(invalid_colors)) {
+            stop("'color.node.individual' contains invalid color values.", call. = FALSE)
+        }
+    }
     
     #-- color.node
     if(any(class.object %in% object.blocks))
@@ -931,12 +949,12 @@ network <- function(mat,
     
     # nodes attributes #
     #------------------#
-    
-    
+
+
     V(gR)$label.color = "black"
-    
+
     V(gR)$label.family = "sans"
-    
+
     if(any(class.object %in% object.blocks))
     {
         V(gR)$label = unlist(block.var.names)
@@ -964,7 +982,27 @@ network <- function(mat,
         if (shape.node[2] == "none") {
           V(gR)$label.color[V(gR)$group == "y"] = paste0(substr(color.node[2], 1, 7), "FF")
         }
+    }
+
+    # Override with individual colors if provided
+    if (!is.null(color.node.individual)) {
+        # Get the actual node names (not labels)
+        node_names <- V(gR)$name
+
         
+        # Apply individual colors
+        for (i in seq_along(node_names)) {
+            if (node_names[i] %in% names(color.node.individual)) {
+
+                V(gR)$color[i] <- color.node.individual[[node_names[i]]]
+                
+                # Update label color if shape is "none"
+                if (!is.null(V(gR)$shape[i]) && V(gR)$shape[i] == "none") {
+                    V(gR)$label.color[i] <- paste0(substr(color.node.individual[[node_names[i]]], 1, 7), "FF")
+                }
+            }
+            # Nodes not in the dictionary keep their group-based colors
+        }
     }
     
     # edges attributes #
@@ -1287,7 +1325,7 @@ network <- function(mat,
                     V(gE)$size = xh
                     V(gE)$size2 = yh
                     
-                    par(def.par)	
+                    par(def.par)    
                     
                     if (is.null(layout.fun))
                     {
@@ -1302,7 +1340,7 @@ network <- function(mat,
                         par(mar = c(5, 4, 2, 1), cex = 0.75)
                         image(z.mat, col = col, xaxt = "n", yaxt = "n")
                         box()
-                        par(usr = c(0, 1, 0, 1))						
+                        par(usr = c(0, 1, 0, 1))                        
                         axis(1, at = xv, labels = lv, cex.axis = keysize.label)
                         title("Color key", font.main = 1, cex.main = keysize.label)
                         par(def.par)
