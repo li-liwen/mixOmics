@@ -25,10 +25,40 @@
 
 #' @importFrom utils packageDescription
 .onAttach <- function(libname, pkgname){ packageStartupMessage( "\nLoaded mixOmics ", as.character(packageDescription("mixOmics")[["Version"]]),
-                                                                "\nThank you for using mixOmics!",
-                                                                "\nTutorials: http://mixomics.org",
-                                                                "\nBookdown vignette: https://mixomicsteam.github.io/Bookdown",
-                                                                "\nQuestions, issues: Follow the prompts at http://mixomics.org/contact-us",
-                                                                "\nCite us:  citation('mixOmics')\n"
-                                                                
+                                                                 "\nThank you for using mixOmics!",
+                                                                 "\nTutorials: http://mixomics.org",
+                                                                 "\nBookdown vignette: https://mixomicsteam.github.io/Bookdown",
+                                                                 "\nQuestions, issues: Follow the prompts at http://mixomics.org/contact-us",
+                                                                 "\nCite us:  citation('mixOmics')\n"
+                                                                 
 )}
+
+#' Register custom shapes for network visualization with igraph
+#' 
+#' This function is called when the package loads to register the custom
+#' diamond and triangle node shapes with the igraph package. These shapes
+#' allow for proportional sizing based on node label dimensions.
+#' 
+#' @keywords internal
+.onLoad <- function(libname, pkgname) {
+    # Register custom shapes for network visualization
+    # These shapes are defined in network.R and allow nodes to be sized
+    # proportionally to their label dimensions (using vertex size and size2)
+    
+    # Get list of available shapes
+    available_shapes <- igraph::shapes()
+    
+    # Diamond shape: 4-pointed rhombus with dimensions based on label size
+    if (!"diamond" %in% available_shapes) {
+        igraph::add_shape("diamond",
+                          clip = igraph::shape_noclip,
+                          plot = myshape.diamond)
+    }
+    
+    # Triangle shape: 3-pointed star with dimensions based on label size
+    if (!"triangle" %in% available_shapes) {
+        igraph::add_shape("triangle",
+                          clip = igraph::shape_noclip,
+                          plot = mytriangle)
+    }
+}

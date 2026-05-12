@@ -78,9 +78,10 @@
 #' package can be used too.
 #' 
 #' \code{shape.node[1]} and \code{shape.node[2]} provide the shape of the nodes
-#' associate to \eqn{X}- and \eqn{Y}-variables respectively. Current acceptable
-#' values are \code{"circle"} and \code{"rectangle"}. Defaults to
-#' \code{c("circle", "rectangle")}.
+#' associate to \eqn{X}- and \eqn{Y}-variables respectively. Acceptable
+#' values include \code{"circle"} (default for X), \code{"rectangle"} (default for Y),
+#' \code{"diamond"}, and \code{"triangle"}. See section \emph{Custom Node Shapes} for
+#' details.
 #' 
 #' \code{lty.edge[1]} and \code{lty.egde[2]} give the line type to edges with
 #' positive and negative weight respectively. Can be one of \code{"solid"},
@@ -189,6 +190,96 @@
 #' @keywords multivariate graphs dplot hplot iplot
 #' @export
 #' @example ./examples/network-examples.R
+#'
+#' @section Custom Node Shapes:
+#' The \code{network} function supports custom node shapes in addition to the
+#' standard igraph shapes. The following shapes are available:
+#' \describe{
+#'   \item{"circle"}{Standard circular nodes (default for X variables)}
+#'   \item{"rectangle"}{Rectangular nodes sized to fit the node label (default for Y variables)}
+#'   \item{"diamond"}{Diamond/rhombus nodes, sized proportionally to fit the node label}
+#'   \item{"triangle"}{Triangular nodes, sized proportionally to fit the node label}
+#' }
+#'
+#' These custom shapes are registered with igraph on package load and can be
+#' used by specifying the shape name in the \code{shape.node} parameter.
+
+#' Diamond-shaped vertex for network plots
+#'
+#' Draws a diamond/rhombus shape where the width and height are proportional
+#' to the vertex label dimensions. The shape is created by connecting four
+#' corner points (top, right, bottom, left) relative to the vertex center.
+#'
+#' @param coords A numeric matrix with two columns containing the x and y
+#'   coordinates of vertices.
+#' @param v Optional integer vector specifying which vertices to plot.
+#' @param params A function to retrieve vertex parameters (color, size, size2).
+#' @return Invisible NULL. The function draws shapes on the current graphics device.
+#' @keywords internal
+myshape.diamond <- function(coords, v = NULL, params) {
+    # Get vertex color - handles individual colors if v is provided
+    vertex.color <- params("vertex", "color")
+    if (length(vertex.color) != 1 && !is.null(v)) vertex.color <- vertex.color[v]
+    
+    # Get width and height dimensions from vertex attributes
+    # size corresponds to width (based on strwidth of labels)
+    # size2 corresponds to height (based on strheight of labels)
+    vertex.width <- params("vertex", "size")
+    vertex.height <- params("vertex", "size2")
+    if (!is.null(v)) {
+        if (length(vertex.width) != 1) vertex.width <- vertex.width[v]
+        if (length(vertex.height) != 1) vertex.height <- vertex.height[v]
+    }
+    
+    # Draw diamond using polygon: connect corner points (top, right, bottom, left)
+    for (i in seq_len(nrow(coords))) {
+        polygon(
+            x = coords[i, 1] + c(0, vertex.width[i]/2, 0, -vertex.width[i]/2),
+            y = coords[i, 2] + c(vertex.height[i]/2, 0, -vertex.height[i]/2, 0),
+            col = vertex.color[i],
+            border = "black"
+        )
+    }
+}
+
+#' Triangle-shaped vertex for network plots
+#'
+#' Draws a triangle shape where the width and height are proportional
+#' to the vertex label dimensions. The shape is created with vertices at
+#' the left, top (apex), and right positions relative to the vertex center.
+#'
+#' @param coords A numeric matrix with two columns containing the x and y
+#'   coordinates of vertices.
+#' @param v Optional integer vector specifying which vertices to plot.
+#' @param params A function to retrieve vertex parameters (color, size, size2).
+#' @return Invisible NULL. The function draws shapes on the current graphics device.
+#' @keywords internal
+mytriangle <- function(coords, v = NULL, params) {
+    # Get vertex color - handles individual colors if v is provided
+    vertex.color <- params("vertex", "color")
+    if (length(vertex.color) != 1 && !is.null(v)) vertex.color <- vertex.color[v]
+    
+    # Get width and height dimensions from vertex attributes
+    # size corresponds to width (based on strwidth of labels)
+    # size2 corresponds to height (based on strheight of labels)
+    vertex.width <- params("vertex", "size")
+    vertex.height <- params("vertex", "size2")
+    if (!is.null(v)) {
+        if (length(vertex.width) != 1) vertex.width <- vertex.width[v]
+        if (length(vertex.height) != 1) vertex.height <- vertex.height[v]
+    }
+    
+    # Draw triangle using polygon: vertices at left, top (apex), and right
+    for (i in seq_len(nrow(coords))) {
+        polygon(
+            x = coords[i, 1] + c(-vertex.width[i]/2, 0, vertex.width[i]/2),
+            y = coords[i, 2] + c(-vertex.height[i]/2, vertex.height[i]/2, -vertex.height[i]/2),
+            col = vertex.color[i],
+            border = "black"
+        )
+    }
+}
+
 network <- function(mat,
                     comp = NULL,
                     blocks = c(1, 2),
@@ -763,8 +854,8 @@ network <- function(mat,
                  call. = FALSE)
         }
         
-        if (!all(shape.node %in% c("none", "circle", "rectangle")))
-            stop("elements of 'shape.node' must be from {'none', 'circle', 'rectangle'}.",
+        if (!all(shape.node %in% c("none", "circle", "rectangle", "diamond", "triangle")))
+            stop("elements of 'shape.node' must be from {'none', 'circle', 'rectangle', 'diamond', 'triangle'}.",
                  call. = FALSE)
         
         if (is.null(names(shape.node)))
@@ -787,8 +878,8 @@ network <- function(mat,
             stop("'shape.node' must be a vector of length 2.", call. = FALSE)
         }
         
-        if (!all(shape.node %in% c("none", "circle", "rectangle")))
-            stop("elements of 'shape.node' must be from {'none', 'circle', 'rectangle'}.",
+        if (!all(shape.node %in% c("none", "circle", "rectangle", "diamond", "triangle")))
+            stop("elements of 'shape.node' must be from {'none', 'circle', 'rectangle', 'diamond', 'triangle'}.",
                  call. = FALSE)
         
     }
@@ -1115,7 +1206,11 @@ network <- function(mat,
         {
             l = layout.fruchterman.reingold(gR, weights = (1 - abs(E(gR)$weight)))
         } else {
-            l = layout.fun(gR)
+            if (is.null(layout.fun)) {
+                l = layout.fruchterman.reingold(gR, weights = (1 - abs(E(gR)$weight)))
+            } else {
+                l = layout.fun(gR)
+            }
         }
         
         if (isTRUE(!interactive))
