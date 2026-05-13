@@ -197,9 +197,17 @@
 #' \describe{
 #'   \item{"circle"}{Standard circular nodes (default for X variables)}
 #'   \item{"rectangle"}{Rectangular nodes sized to fit the node label (default for Y variables)}
-#'   \item{"diamond"}{Diamond/rhombus nodes, sized proportionally to fit the node label}
-#'   \item{"triangle"}{Triangular nodes, sized proportionally to fit the node label}
+#'   \item{"diamond"}{Diamond/rhombus nodes, sized to match rectangle visual area}
+#'   \item{"triangle"}{Triangular nodes, sized to match rectangle visual area}
 #' }
+#'
+#' All shapes are scaled proportionally based on the \code{size.node} parameter
+#' and the node label dimensions. The diamond and triangle shapes are internally
+#' scaled by a factor of \code{sqrt(2) \approx 1.414} to ensure they appear
+#' visually similar in size to the rectangle and circle when using the same
+#' \code{size.node} value. This scaling compensates for the geometric fact that
+#' a diamond inscribed in a W x H box has half the area of the rectangle,
+#' and a triangle with base W and height H has half the area of the rectangle.
 #'
 #' These custom shapes are registered with igraph on package load and can be
 #' used by specifying the shape name in the \code{shape.node} parameter.
@@ -210,6 +218,12 @@
 #' to the vertex label dimensions. The shape is created by connecting four
 #' corner points (top, right, bottom, left) relative to the vertex center.
 #'
+#' The diamond is scaled by a factor of sqrt(2) to match the visual area of
+#' the rectangle shape. A diamond inscribed in a W x H bounding box has only
+#' half the area of the rectangle (it's a rotated square). The sqrt(2) scaling
+#' factor ensures that when users set the same size.node value, all shapes
+#' (circle, rectangle, diamond, triangle) appear visually similar in size.
+#'
 #' @param coords A numeric matrix with two columns containing the x and y
 #'   coordinates of vertices.
 #' @param v Optional integer vector specifying which vertices to plot.
@@ -217,10 +231,15 @@
 #' @return Invisible NULL. The function draws shapes on the current graphics device.
 #' @keywords internal
 myshape.diamond <- function(coords, v = NULL, params) {
+    # Scaling factor to match visual area with rectangle
+    # A diamond inscribed in W x H has area = (W*H)/2, while rectangle has W*H
+    # Scaling by sqrt(2) makes the diamond's area equal to the rectangle's area
+    scale.factor <- sqrt(2)
+
     # Get vertex color - handles individual colors if v is provided
     vertex.color <- params("vertex", "color")
     if (length(vertex.color) != 1 && !is.null(v)) vertex.color <- vertex.color[v]
-    
+
     # Get width and height dimensions from vertex attributes
     # size corresponds to width (based on strwidth of labels)
     # size2 corresponds to height (based on strheight of labels)
@@ -230,7 +249,12 @@ myshape.diamond <- function(coords, v = NULL, params) {
         if (length(vertex.width) != 1) vertex.width <- vertex.width[v]
         if (length(vertex.height) != 1) vertex.height <- vertex.height[v]
     }
-    
+
+    # Apply scale factor to match visual area with rectangle
+    # Diamond inscribed in W x H box has vertices at corners, but area is half
+    vertex.width <- vertex.width * scale.factor
+    vertex.height <- vertex.height * scale.factor
+
     # Draw diamond using polygon: connect corner points (top, right, bottom, left)
     for (i in seq_len(nrow(coords))) {
         polygon(
@@ -248,6 +272,12 @@ myshape.diamond <- function(coords, v = NULL, params) {
 #' to the vertex label dimensions. The shape is created with vertices at
 #' the left, top (apex), and right positions relative to the vertex center.
 #'
+#' The triangle is scaled by a factor of sqrt(2) to match the visual area of
+#' the rectangle shape. A triangle with base W and height H has area = (W*H)/2,
+#' exactly half the area of the rectangle (W*H). The sqrt(2) scaling factor
+#' ensures that when users set the same size.node value, all shapes
+#' (circle, rectangle, diamond, triangle) appear visually similar in size.
+#'
 #' @param coords A numeric matrix with two columns containing the x and y
 #'   coordinates of vertices.
 #' @param v Optional integer vector specifying which vertices to plot.
@@ -255,10 +285,15 @@ myshape.diamond <- function(coords, v = NULL, params) {
 #' @return Invisible NULL. The function draws shapes on the current graphics device.
 #' @keywords internal
 mytriangle <- function(coords, v = NULL, params) {
+    # Scaling factor to match visual area with rectangle
+    # A triangle with base W and height H has area = (W*H)/2
+    # Scaling by sqrt(2) makes the triangle's area equal to rectangle's area
+    scale.factor <- sqrt(2)
+
     # Get vertex color - handles individual colors if v is provided
     vertex.color <- params("vertex", "color")
     if (length(vertex.color) != 1 && !is.null(v)) vertex.color <- vertex.color[v]
-    
+
     # Get width and height dimensions from vertex attributes
     # size corresponds to width (based on strwidth of labels)
     # size2 corresponds to height (based on strheight of labels)
@@ -268,7 +303,11 @@ mytriangle <- function(coords, v = NULL, params) {
         if (length(vertex.width) != 1) vertex.width <- vertex.width[v]
         if (length(vertex.height) != 1) vertex.height <- vertex.height[v]
     }
-    
+
+    # Apply scale factor to match visual area with rectangle
+    vertex.width <- vertex.width * scale.factor
+    vertex.height <- vertex.height * scale.factor
+
     # Draw triangle using polygon: vertices at left, top (apex), and right
     for (i in seq_len(nrow(coords))) {
         polygon(
